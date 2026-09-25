@@ -18,6 +18,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _navigateToNext() async {
     await Future.delayed(const Duration(seconds: 3));
+    if (!mounted) return;
     Navigator.pushNamedAndRemoveUntil(
       context,
       AppRoutes.onboardingRoute,
@@ -33,17 +34,14 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           children: [
             const Spacer(flex: 3),
-
             Image.asset(
               'assets/splash_logo/splash1.png',
               width: 120,
               height: 120,
             ),
             const Spacer(flex: 3),
-
             Image.asset('assets/splash_logo/splash2.png', width: 160),
             const SizedBox(height: 8),
-
             const Text(
               'Supervised by Mohamed Nabil',
               style: TextStyle(
