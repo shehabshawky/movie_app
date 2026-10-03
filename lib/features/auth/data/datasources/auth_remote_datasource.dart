@@ -29,7 +29,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   });
 
   FirebaseAuth get auth => firebaseAuth ?? FirebaseAuth.instance;
-  GoogleSignIn get googleAuth => googleSignIn ?? GoogleSignIn();
+  GoogleSignIn get googleAuth => googleSignIn ?? GoogleSignIn( );
   FirebaseFirestore get db => firestore ?? FirebaseFirestore.instance;
 
   @override

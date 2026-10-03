@@ -3,12 +3,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:movie_app/core/routes/app_routes.dart';
 import 'package:movie_app/core/storage.dart';
 import 'package:movie_app/core/theme/app_colors.dart';
-import 'package:movie_app/features/movies/data/models/movie_details_model.dart';
+import 'package:movie_app/features/movies/data/models/movie_details_model.dart' hide Data;
 import 'package:movie_app/features/movies/presentation/view/profile/cubit/profile_cubit.dart';
 import 'package:movie_app/features/movies/presentation/view/profile/widget/drawer_view.dart';
 import 'package:movie_app/features/movies/presentation/view_model/add_favorite_cubit.dart';
 import 'package:movie_app/features/movies/presentation/widgets/movie_poster_card.dart';
 import 'package:movie_app/gen/assets.gen.dart';
+import 'package:movie_app/model/get_all_favorite_model.dart';
+
 // import 'package:shared_preferences/shared_preferences.dart';
 // import '../../view_model/add_favorite_cubit.dart';
 
@@ -368,4 +370,4 @@ class ProfileTab extends StatelessWidget {
     );
   }
 }
-// 
+//
