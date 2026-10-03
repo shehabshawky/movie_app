@@ -17,18 +17,17 @@ class _YoutubePlayerScreenState extends State<MoviePlayer> {
     super.didChangeDependencies();
 
     if (!_isInit) {
-      final args = ModalRoute.of(context)!.settings.arguments
-      as Map<String, dynamic>;
+      final args =
+          ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
 
-      final String trailerId = args["trailerId"] ?? "";
+      final String trailerId = args?["trailerId"] ?? "";
 
-      _controller = YoutubePlayerController(
-        initialVideoId: trailerId,
-        flags: const YoutubePlayerFlags(
-          autoPlay: true,
-          controlsVisibleAtStart: true,
-          enableCaption: true,
-          hideControls: false,
+      _controller = YoutubePlayerController.fromVideoId(
+        videoId: trailerId,
+        autoPlay: true,
+        params: const YoutubePlayerParams(
+          showControls: true,
+          showFullscreenButton: true,
         ),
       );
 
@@ -38,7 +37,7 @@ class _YoutubePlayerScreenState extends State<MoviePlayer> {
 
   @override
   void dispose() {
-    _controller.dispose();
+    _controller.close();
     super.dispose();
   }
 
@@ -47,10 +46,10 @@ class _YoutubePlayerScreenState extends State<MoviePlayer> {
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
-        child: YoutubePlayer(
-          controller: _controller,
-          showVideoProgressIndicator: true,
-          progressIndicatorColor: Colors.red,
+        child: Center(
+          child: YoutubePlayer(
+            controller: _controller,
+          ),
         ),
       ),
     );
