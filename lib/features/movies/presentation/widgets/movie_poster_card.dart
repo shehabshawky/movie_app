@@ -1,8 +1,3 @@
-
-
-
-import 'package:movie_app/features/movies/data/models/movie_details_model.dart';
-
 import 'package:flutter/material.dart';
 import 'package:movie_app/core/routes/app_routes.dart';
 import 'package:movie_app/gen/assets.gen.dart';
@@ -12,9 +7,9 @@ class MoviePosterCard extends StatelessWidget {
   final int index;
   final double rating;
   final bool isFeatured;
-  List featured;
+  final List featured;
 
-  MoviePosterCard({
+  const MoviePosterCard({
     super.key,
     required this.image,
     required this.rating,
@@ -25,70 +20,73 @@ class MoviePosterCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    double width = isFeatured ? 200 : 120;
-    double height = isFeatured ? 300 : 180;
-
-    return GestureDetector(
-      onTap: () {
-        Navigator.of(context).pushNamed(
-          AppRoutes.filmDetails,
-          arguments: {'id': featured[index].id},
-        );
-      },
-      child: Container(
-        width: width,
-        height: height,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.5),
-              spreadRadius: 2,
-              blurRadius: 5,
-              offset: Offset(0, 3),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Image.network(
-                image,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) =>
-                    Image.asset(Assets.images.noPosterAvailable.path),
-              ),
-              Positioned(
-                top: 10,
-                left: 10,
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.7),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    children: [
-                      Text(
-                        '$rating',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                      ),
-                      SizedBox(width: 4),
-                      Icon(Icons.star, color: Colors.yellow, size: 16),
-                    ],
-                  ),
-                ),
+    return AspectRatio(
+      aspectRatio: 0.68,
+      child: GestureDetector(
+        onTap: () {
+          if (index < featured.length && featured[index] != null) {
+            final movieId = featured[index].id;
+            Navigator.of(context).pushNamed(
+              AppRoutes.filmDetails,
+              arguments: {'id': movieId},
+            );
+          }
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.5),
+                spreadRadius: 1,
+                blurRadius: 4,
+                offset: const Offset(0, 2),
               ),
             ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.network(
+                  image,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) =>
+                      Image.asset(Assets.images.noPosterAvailable.path, fit: BoxFit.cover),
+                ),
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.75),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          rating.toStringAsFixed(1),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(width: 3),
+                        const Icon(Icons.star, color: Colors.yellow, size: 14),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 }
+

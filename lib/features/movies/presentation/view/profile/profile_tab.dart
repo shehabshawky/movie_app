@@ -3,371 +3,390 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:movie_app/core/routes/app_routes.dart';
 import 'package:movie_app/core/storage.dart';
 import 'package:movie_app/core/theme/app_colors.dart';
-import 'package:movie_app/features/movies/data/models/movie_details_model.dart' hide Data;
 import 'package:movie_app/features/movies/presentation/view/profile/cubit/profile_cubit.dart';
-import 'package:movie_app/features/movies/presentation/view/profile/widget/drawer_view.dart';
 import 'package:movie_app/features/movies/presentation/view_model/add_favorite_cubit.dart';
 import 'package:movie_app/features/movies/presentation/widgets/movie_poster_card.dart';
 import 'package:movie_app/gen/assets.gen.dart';
 import 'package:movie_app/model/get_all_favorite_model.dart';
 
-// import 'package:shared_preferences/shared_preferences.dart';
-// import '../../view_model/add_favorite_cubit.dart';
-
-class ProfileTab extends StatelessWidget {
+class ProfileTab extends StatefulWidget {
   const ProfileTab({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final w = MediaQuery.sizeOf(context).width;
-    final h = MediaQuery.sizeOf(context).height;
+  State<ProfileTab> createState() => _ProfileTabState();
+}
 
+class _ProfileTabState extends State<ProfileTab> {
+  final List<String> avatars = [
+    Assets.avatar.avatar1.path,
+    Assets.avatar.avatar2.path,
+    Assets.avatar.avatar3.path,
+    Assets.avatar.avatar4.path,
+    Assets.avatar.avatar5.path,
+    Assets.avatar.avatar6.path,
+    Assets.avatar.avatar7.path,
+    Assets.avatar.avatar8.path,
+    Assets.avatar.avatar9.path,
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ProfileCubit>().getUser();
+      context.read<AddFavoriteCubit>().getAllFavoriteData();
+    });
+  }
+
+  void _onLogout() {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.greyColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Log Out',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        content: const Text(
+          'Are you sure you want to log out?',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.redColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              await TokenManager.delete();
+              if (mounted) {
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  AppRoutes.loginRoute,
+                  (r) => false,
+                );
+              }
+            },
+            child: const Text(
+              'Log Out',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: const Color(0xff212121),
-          title: const Text(
-            'Profile',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-          ),
-        ),
-        drawer: const Drawer(
-          backgroundColor: Colors.black,
-          child: DrawerView(),
-        ),
-        backgroundColor: Colors.black,
+        backgroundColor: AppColors.darkBackgroundColor,
         body: SafeArea(
-          child: BlocListener<ProfileCubit, ProfileState>(
-            listener: (context, state) {
-              if (state is GetUserSuccessState) {
-                context.read<AddFavoriteCubit>().getAllFavoriteData();
-              }
-            },
-            child: BlocBuilder<ProfileCubit, ProfileState>(
-              builder: (context, profileState) {
-                if (profileState is GetUserLoadingState) {
-                  return const Center(
-                    child: CircularProgressIndicator(
-                      color: AppColors.yellowColor,
-                    ),
-                  );
-                }
+          child: BlocBuilder<ProfileCubit, ProfileState>(
+            builder: (context, profileState) {
+              final user = (profileState is GetUserSuccessState)
+                  ? profileState.profile.data
+                  : null;
 
-                if (profileState is GetUserSuccessState) {
-                  final user = profileState.profile.data!;
-                  final avatarId = user.avaterId ?? 1;
+              final int rawAvatarId = user?.avaterId ?? 1;
+              final int avatarIndex = (rawAvatarId >= 1 && rawAvatarId <= avatars.length)
+                  ? rawAvatarId - 1
+                  : 0;
+              final String avatarPath = avatars[avatarIndex];
+              final String userName = user?.name ?? 'User';
 
-                  return Column(
-                    children: [
-                      Container(
-                        color: const Color(0xff212121),
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
+              return Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Header: Avatar + Name | Wish List | History
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            SizedBox(height: h * 0.03),
-                            Row(
+                            // Left: Avatar + Name
+                            Column(
                               children: [
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    CircleAvatar(
-                                      radius: 40,
-                                      backgroundImage: AssetImage(
-                                        'assets/avatar/avatar$avatarId.png',
-                                      ),
-                                    ),
-                                    SizedBox(height: h * 0.018),
-                                    SizedBox(
-                                      width: w * 0.3,
-                                      child: Text(
-                                        user.name ?? 'User',
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                                CircleAvatar(
+                                  radius: 46,
+                                  backgroundColor: Colors.transparent,
+                                  backgroundImage: AssetImage(avatarPath),
                                 ),
-                                SizedBox(width: w * 0.025),
-                                const Column(
-                                  children: [
-                                    Text(
-                                      '0',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.w700,
-                                      ),
+                                const SizedBox(height: 10),
+                                SizedBox(
+                                  width: 110,
+                                  child: Text(
+                                    userName,
+                                    textAlign: TextAlign.center,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
                                     ),
-                                    SizedBox(height: 8),
-                                    Text(
-                                      'Watch List',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const Spacer(),
-                                BlocBuilder<AddFavoriteCubit, AddFavoriteState>(
-                                  builder: (context, state) {
-                                    int count = 0;
-                                    if (state is GetAllFavoriteSuccess) {
-                                      count = state.favoriteList.length;
-                                    }
-                                    return Column(
-                                      children: [
-                                        Text(
-                                          '$count',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        const Text(
-                                          'History',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                      ],
-                                    );
-                                  },
+                                  ),
                                 ),
                               ],
                             ),
 
-                            SizedBox(height: h * 0.03),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: FilledButton(
-                                    onPressed: () async {
-                                      final result = await Navigator.pushNamed(
-                                        context,
-                                        AppRoutes.editProfileScreen,
-                                      );
-                                      if (result == true)
-                                        context.read<ProfileCubit>().getUser();
-                                    },
-                                    style: FilledButton.styleFrom(
-                                      backgroundColor: AppColors.yellowColor,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(15),
+                            const Spacer(),
+
+                            // Middle: Wish List Count & Label
+                            BlocBuilder<AddFavoriteCubit, AddFavoriteState>(
+                              builder: (context, favState) {
+                                final int count = (favState is GetAllFavoriteSuccess)
+                                    ? favState.favoriteList.length
+                                    : 0;
+                                return Column(
+                                  children: [
+                                    Text(
+                                      '$count',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 26,
+                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                    child: const Text(
-                                      'Edit Profile',
+                                    const SizedBox(height: 6),
+                                    const Text(
+                                      'Wish List',
                                       style: TextStyle(
-                                        color: Colors.black,
-                                        fontSize: 20,
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
                                       ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+
+                            const Spacer(),
+
+                            // Right: History Count & Label
+                            const Column(
+                              children: [
+                                Text(
+                                  '0',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                SizedBox(height: 6),
+                                Text(
+                                  'History',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(width: 8),
+                          ],
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // Action Buttons: Edit Profile (Yellow) & Exit (Red)
+                        Row(
+                          children: [
+                            // Edit Profile Button
+                            Expanded(
+                              flex: 3,
+                              child: SizedBox(
+                                height: 48,
+                                child: ElevatedButton(
+                                  onPressed: () async {
+                                    final result = await Navigator.pushNamed(
+                                      context,
+                                      AppRoutes.editProfileScreen,
+                                    );
+                                    if (result == true && context.mounted) {
+                                      context.read<ProfileCubit>().getUser();
+                                    }
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.yellowColor,
+                                    foregroundColor: Colors.black,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    'Edit Profile',
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                 ),
-                                const SizedBox(width: 12),
-                                FilledButton(
-                                  onPressed: () {
-                                    showDialog(
-                                      context: context,
-                                      barrierDismissible: false,
-                                      builder: (BuildContext dialogContext) {
-                                        return AlertDialog(
-                                          backgroundColor:
-                                              AppColors.yellowColor,
-                                          scrollable: true,
-                                          title: Text(
-                                            'Logout',
-                                            style: TextStyle(
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                          content: Text(
-                                            'Are you sure,do you want to logout?',
-                                          ),
-                                          actions: [
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.end,
-                                              children: [
-                                                ElevatedButton(
-                                                  onPressed: () {
-                                                    Navigator.pop(
-                                                      dialogContext,
-                                                    );
-                                                  },
-                                                  child: Text(
-                                                    'No',
-                                                    style: TextStyle(
-                                                      color: Colors.blue,
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                    ),
-                                                  ),
-                                                ),
-                                                SizedBox(width: 5),
-                                                ElevatedButton(
-                                                  onPressed: () async {
-                                                    await TokenManager.delete();
-                                                    Navigator.pushNamedAndRemoveUntil(
-                                                      context,
-                                                      AppRoutes.loginRoute,
-                                                      (r) => false,
-                                                    );
-                                                  },
-                                                  child: Text(
-                                                    'Yes',
-                                                    style: TextStyle(
-                                                      color: Colors.green,
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        );
-                                      },
-                                    );
-                                  },
-                                  style: FilledButton.styleFrom(
+                              ),
+                            ),
+
+                            const SizedBox(width: 12),
+
+                            // Exit Button
+                            Expanded(
+                              flex: 2,
+                              child: SizedBox(
+                                height: 48,
+                                child: ElevatedButton(
+                                  onPressed: _onLogout,
+                                  style: ElevatedButton.styleFrom(
                                     backgroundColor: AppColors.redColor,
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(15),
+                                      borderRadius: BorderRadius.circular(14),
                                     ),
                                   ),
-                                  child: Row(
+                                  child: const Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       Text(
                                         'Exit',
                                         style: TextStyle(
                                           color: Colors.white,
-                                          fontSize: 20,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                       SizedBox(width: 8),
-                                      Icon(Icons.logout, color: Colors.white),
+                                      Icon(
+                                        Icons.exit_to_app,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
                                     ],
                                   ),
                                 ),
-                              ],
-                            ),
-
-                            SizedBox(height: h * 0.025),
-                            const TabBar(
-                              indicatorColor: AppColors.yellowColor,
-                              dividerColor: Colors.transparent,
-                              labelStyle: TextStyle(
-                                color: Colors.white,
-                                fontSize: 20,
-                                fontWeight: FontWeight.w400,
                               ),
-                              unselectedLabelStyle: TextStyle(
-                                color: Colors.white,
-                                fontSize: 20,
-                              ),
-                              tabs: [
-                                Tab(
-                                  icon: Icon(
-                                    Icons.menu,
-                                    color: AppColors.yellowColor,
-                                    size: 35,
-                                  ),
-                                  text: 'Watch List',
-                                ),
-                                Tab(
-                                  icon: Icon(
-                                    Icons.folder,
-                                    color: AppColors.yellowColor,
-                                    size: 35,
-                                  ),
-                                  text: 'History',
-                                ),
-                              ],
                             ),
                           ],
                         ),
+                      ],
+                    ),
+                  ),
+
+                  // TabBar: Watch List / History
+                  const TabBar(
+                    indicatorColor: AppColors.yellowColor,
+                    indicatorWeight: 3.5,
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    labelColor: Colors.white,
+                    unselectedLabelColor: Colors.white60,
+                    dividerColor: Colors.transparent,
+                    labelStyle: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    unselectedLabelStyle: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    tabs: [
+                      Tab(
+                        icon: Icon(Icons.format_list_bulleted, color: AppColors.yellowColor, size: 28),
+                        text: 'Watch List',
                       ),
-                      Expanded(
-                        child: BlocBuilder<AddFavoriteCubit, AddFavoriteState>(
-                          builder: (context, state) {
-                            if (state is GetAllFavoriteLoading) {
-                              return const Center(
-                                child: CircularProgressIndicator(
-                                  color: AppColors.yellowColor,
-                                ),
-                              );
-                            }
-                            final favoriteList = state is GetAllFavoriteSuccess
-                                ? state.favoriteList
-                                : <Data>[];
-                            return TabBarView(
-                              children: [
-                                Center(
-                                  child: Image.asset(
-                                    Assets.images.pobcornImage.path,
-                                    width: 124,
-                                    height: 124,
-                                  ),
-                                ),
-                                favoriteList.isEmpty
-                                    ? Center(
-                                        child: Image.asset(
-                                          Assets.images.pobcornImage.path,
-                                          width: 124,
-                                          height: 124,
-                                        ),
-                                      )
-                                    : GridView.builder(
-                                        padding: const EdgeInsets.all(16),
-                                        gridDelegate:
-                                            const SliverGridDelegateWithFixedCrossAxisCount(
-                                              crossAxisCount: 2,
-                                              crossAxisSpacing: 16,
-                                              mainAxisSpacing: 16,
-                                              childAspectRatio: 0.65,
-                                            ),
-                                        itemCount: favoriteList.length,
-                                        itemBuilder: (context, index) {
-                                          final movie = favoriteList[index];
-                                          return MoviePosterCard(
-                                            image: movie.imageURL ?? '',
-                                            rating: movie.rating ?? 0.0,
-                                            featured: favoriteList,
-                                            index: index,
-                                          );
-                                        },
-                                      ),
-                              ],
-                            );
-                          },
-                        ),
+                      Tab(
+                        icon: Icon(Icons.folder, color: AppColors.yellowColor, size: 28),
+                        text: 'History',
                       ),
                     ],
-                  );
-                }
-                return const SizedBox();
-              },
-            ),
+                  ),
+
+                  // TabBarView Content
+                  Expanded(
+                    child: BlocBuilder<AddFavoriteCubit, AddFavoriteState>(
+                      builder: (context, favState) {
+                        if (favState is GetAllFavoriteLoading) {
+                          return const Center(
+                            child: CircularProgressIndicator(
+                              color: AppColors.yellowColor,
+                            ),
+                          );
+                        }
+
+                        final List<Data> favoriteList = (favState is GetAllFavoriteSuccess)
+                            ? favState.favoriteList
+                            : <Data>[];
+
+                        return TabBarView(
+                          children: [
+                            // 1. Watch List Tab
+                            favoriteList.isEmpty
+                                ? Center(
+                                    child: Image.asset(
+                                      Assets.images.pobcornImage.path,
+                                      width: 140,
+                                      height: 140,
+                                    ),
+                                  )
+                                : GridView.builder(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 14,
+                                    ),
+                                    gridDelegate:
+                                        const SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: 3,
+                                      crossAxisSpacing: 10,
+                                      mainAxisSpacing: 12,
+                                      childAspectRatio: 0.68,
+                                    ),
+                                    itemCount: favoriteList.length,
+                                    itemBuilder: (context, index) {
+                                      final movie = favoriteList[index];
+                                      return MoviePosterCard(
+                                        image: movie.imageURL ?? '',
+                                        rating: movie.rating ?? 0.0,
+                                        featured: favoriteList,
+                                        index: index,
+                                      );
+                                    },
+                                  ),
+
+                            // 2. History Tab (Empty state)
+                            Center(
+                              child: Image.asset(
+                                Assets.images.pobcornImage.path,
+                                width: 140,
+                                height: 140,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ),
     );
   }
 }
-//
+

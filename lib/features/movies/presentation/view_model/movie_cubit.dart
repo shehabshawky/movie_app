@@ -1,9 +1,7 @@
-
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:meta/meta.dart';
 import 'package:movie_app/features/movies/data/models/movie_model.dart';
 import 'package:movie_app/features/movies/data/repositories/movie_detalis_repository.dart';
-
 
 part 'movie_state.dart';
 
@@ -13,6 +11,13 @@ class MovieCubit extends Cubit<MovieState> {
   List<Movies> _allMovies = [];
   List<Movies> _featuredMovies = [];
   List<Movies> _actionMovies = [];
+
+  @override
+  void emit(MovieState state) {
+    if (!isClosed) {
+      super.emit(state);
+    }
+  }
 
   Future<void> getMovies({int page = 1, int limit = 50}) async {
     emit(MovieLoadingState());

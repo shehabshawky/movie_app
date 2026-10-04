@@ -1,11 +1,8 @@
-
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:movie_app/core/routes/app_routes.dart';
 import 'package:movie_app/core/storage.dart';
 import 'package:movie_app/core/theme/app_colors.dart';
-import 'package:movie_app/core/widgets/custom_text_field.dart';
 import 'package:movie_app/features/movies/presentation/view/profile/cubit/profile_cubit.dart';
 import 'package:movie_app/gen/assets.gen.dart';
 
@@ -29,8 +26,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     Assets.avatar.avatar9.path,
   ];
 
-  late TextEditingController _nameController;
-  late TextEditingController _phoneController;
+  late final TextEditingController _nameController;
+  late final TextEditingController _phoneController;
   int selectedAvatarIndex = 0;
 
   @override
@@ -50,25 +47,27 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void _showAvatarPicker() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.darkBackgroundColor,
+      backgroundColor: const Color(0xFF212322),
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      builder: (_) {
-        return Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              GridView.builder(
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20.0,
+                vertical: 24.0,
+              ),
+              child: GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: avatars.length,
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 3,
-                  mainAxisSpacing: 20,
-                  crossAxisSpacing: 20,
-                  childAspectRatio: 1,
+                  mainAxisSpacing: 16,
+                  crossAxisSpacing: 16,
+                  childAspectRatio: 1.0,
                 ),
                 itemBuilder: (context, index) {
                   final bool isSelected = selectedAvatarIndex == index;
@@ -77,245 +76,377 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       setState(() {
                         selectedAvatarIndex = index;
                       });
-                      Navigator.pop(context);
+                      Navigator.pop(sheetContext);
                     },
                     child: Container(
                       decoration: BoxDecoration(
-                        shape: BoxShape.circle,
+                        color: isSelected
+                            ? AppColors.yellowColor.withValues(alpha: 0.25)
+                            : const Color(0xFF282A28),
+                        borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: isSelected
                               ? AppColors.yellowColor
-                              : Colors.transparent,
-                          width: isSelected ? 4 : 0,
+                              : const Color(0xFF4A4C4A),
+                          width: isSelected ? 2.5 : 1.2,
                         ),
                       ),
-                      child: CircleAvatar(
-                        radius: 40,
-                        backgroundImage: AssetImage(avatars[index]),
+                      child: Center(
+                        child: CircleAvatar(
+                          radius: 34,
+                          backgroundColor: Colors.transparent,
+                          backgroundImage: AssetImage(avatars[index]),
+                        ),
                       ),
                     ),
                   );
                 },
               ),
-              const SizedBox(height: 20),
-            ],
-          ),
+            );
+          },
         );
       },
     );
   }
 
+  void _confirmDeleteAccount(BuildContext context, ProfileCubit cubit) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.greyColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Delete Account',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        content: const Text(
+          'Are you sure you want to delete this account? You cannot undo this action.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.white60),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.redColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              cubit.deleteUser();
+            },
+            child: const Text(
+              'Delete',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final h = MediaQuery.of(context).size.height;
-
-    return Scaffold(
-      resizeToAvoidBottomInset: true,
-      backgroundColor: AppColors.darkBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: AppColors.darkBackgroundColor,
-        foregroundColor: AppColors.yellowColor,
-        title: const Text(
-          "Update Profile",
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-        ),
-        centerTitle: true,
-      ),
-      body: BlocProvider(
-        create: (context) => ProfileCubit()..getUser(),
-        child: BlocConsumer<ProfileCubit, ProfileState>(
-          listener: (context, state) {
-            if (state is GetUserSuccessState) {
-              _nameController.text = state.profile.data?.name ?? '';
-              _phoneController.text = state.profile.data?.phone ?? '';
-              selectedAvatarIndex = (state.profile.data?.avaterId ?? 1) - 1;
+    return BlocProvider(
+      create: (context) => ProfileCubit()..getUser(),
+      child: BlocConsumer<ProfileCubit, ProfileState>(
+        listener: (context, state) {
+          if (state is GetUserSuccessState) {
+            _nameController.text = state.profile.data?.name ?? '';
+            _phoneController.text = state.profile.data?.phone ?? '';
+            final int rawAvatarId = state.profile.data?.avaterId ?? 1;
+            if (rawAvatarId >= 1 && rawAvatarId <= avatars.length) {
+              setState(() {
+                selectedAvatarIndex = rawAvatarId - 1;
+              });
             }
-            if (state is UserUpdateSuccessState) {
-              context.read<ProfileCubit>().getUser();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text("User Update Successfully"),
-                  backgroundColor: Colors.green,
-                ),
-              );
-              Navigator.pop(context, true);
-            }
-            if (state is UserUpdateErrorState) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.error),
-                  backgroundColor: Colors.red,
-                ),
-              );
-            }
-            if (state is DeleteUserSuccessState) {
-              TokenManager.delete();
-              Navigator.pushNamedAndRemoveUntil(
-                context,
-                AppRoutes.loginRoute,
-                (r) => false,
-              );
-            }
-            if (state is DeleteUserErrorState) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.error),
-                  backgroundColor: Colors.red,
-                ),
-              );
-            }
-          },
-          builder: (context, state) {
-            final isLoading =
-                state is GetUserLoadingState ||
-                state is UserUpdateLoadingState ||
-                state is DeleteUserLoadingState;
-            return SingleChildScrollView(
-              scrollDirection: Axis.vertical,
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  const SizedBox(height: 20),
-                  GestureDetector(
-                    onTap: _showAvatarPicker,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        CircleAvatar(
-                          radius: 80,
-                          backgroundImage: AssetImage(
-                            avatars[selectedAvatarIndex],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-                  CustomTextFormField(
-                    controller: _nameController,
-                    hintText: _nameController.text,
-                    prefixIconWidget: const Icon(
-                      Icons.person,
-                      color: Colors.white,
-                    ),
-                    filledColor: AppColors.greyColor,
-                  ),
-                  const SizedBox(height: 20),
-                  CustomTextFormField(
-                    controller: _phoneController,
-                    hintText: _phoneController.text,
-                    prefixIconWidget: const Icon(
-                      Icons.phone,
-                      color: Colors.white,
-                    ),
-                    filledColor: AppColors.greyColor,
-                  ),
-                  SizedBox(height: h * 0.24),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 55,
-                    child: FilledButton(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: Colors.red[700],
-                      ),
-                      onPressed: isLoading
-                          ? null
-                          : () {
-                              showDialog(
-                                context: context,
-                                barrierDismissible: false,
-                                builder: (BuildContext dialogContext) {
-                                  return AlertDialog(
-                                    backgroundColor: AppColors.yellowColor,
-                                    scrollable: true,
-                                    title: Text(
-                                      'Do you want to delete this Account?',
-                                    ),
-                                    content: Text(
-                                      'You cannot undo this action',
-                                    ),
-                                    actions: [
-                                      Row(
-                                        children: [
-                                          ElevatedButton(
-                                            onPressed: () {
-                                              Navigator.pop(dialogContext);
-                                            },
-                                            child: Text(
-                                              'Cancel',
-                                              style: TextStyle(
-                                                color: Colors.blue,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                          ),
-                                          Spacer(),
-                                          ElevatedButton(
-                                            onPressed: () async {
-                                              Navigator.pop(dialogContext);
-                                              context
-                                                  .read<ProfileCubit>()
-                                                  .deleteUser();
-                                            },
-                                            child: Text(
-                                              'Delete',
-                                              style: TextStyle(
-                                                color: Colors.red,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  );
-                                },
-                              );
-                            },
-                      child: isLoading
-                          ? const CircularProgressIndicator(
-                              color: AppColors.yellowColor,
-                            )
-                          : const Text(
-                              "Delete Account",
-                              style: TextStyle(fontSize: 18),
-                            ),
-                    ),
-                  ),
-                  SizedBox(height: 15),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 55,
-                    child: FilledButton(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.yellowColor,
-                      ),
-                      onPressed: () {
-                        context.read<ProfileCubit>().updateUser(
-                          name: _nameController.text,
-                          phone: _phoneController.text,
-                          avatarId: selectedAvatarIndex + 1,
-                        );
-                      },
-                      child: isLoading
-                          ? const CircularProgressIndicator(
-                              color: AppColors.yellowColor,
-                            )
-                          : Text(
-                              "Update Account",
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: Colors.black,
-                              ),
-                            ),
-                    ),
-                  ),
-                  SizedBox(height: h * 0.04),
-                ],
+          }
+          if (state is UserUpdateSuccessState) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Profile updated successfully"),
+                backgroundColor: Colors.green,
               ),
             );
-          },
-        ),
+            Navigator.pop(context, true);
+          }
+          if (state is UserUpdateErrorState) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(state.error), backgroundColor: Colors.red),
+            );
+          }
+          if (state is DeleteUserSuccessState) {
+            TokenManager.delete();
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              AppRoutes.loginRoute,
+              (r) => false,
+            );
+          }
+        },
+        builder: (context, state) {
+          final bool isLoading =
+              state is GetUserLoadingState ||
+              state is UserUpdateLoadingState ||
+              state is DeleteUserLoadingState;
+
+          return Scaffold(
+            backgroundColor: AppColors.darkBackgroundColor,
+            appBar: AppBar(
+              backgroundColor: AppColors.darkBackgroundColor,
+              elevation: 0,
+              centerTitle: true,
+              leading: IconButton(
+                icon: const Icon(
+                  Icons.arrow_back,
+                  color: AppColors.yellowColor,
+                  size: 26,
+                ),
+                onPressed: () => Navigator.pop(context),
+              ),
+              title: const Text(
+                'Pick Avatar',
+                style: TextStyle(
+                  color: AppColors.yellowColor,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            body: SafeArea(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20.0,
+                      vertical: 12.0,
+                    ),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight - 24,
+                      ),
+                      child: IntrinsicHeight(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const SizedBox(height: 12),
+
+                            // Top Avatar
+                            Center(
+                              child: GestureDetector(
+                                onTap: _showAvatarPicker,
+                                child: CircleAvatar(
+                                  radius: 75,
+                                  backgroundColor: Colors.transparent,
+                                  backgroundImage: AssetImage(
+                                    avatars[selectedAvatarIndex],
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 32),
+
+                            // Name Field
+                            Container(
+                              height: 58,
+                              decoration: BoxDecoration(
+                                color: AppColors.greyColor,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.person,
+                                    color: Colors.white,
+                                    size: 24,
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: TextFormField(
+                                      controller: _nameController,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                      ),
+                                      decoration: const InputDecoration(
+                                        hintText: 'Name',
+                                        hintStyle: TextStyle(
+                                          color: Colors.white60,
+                                          fontSize: 16,
+                                        ),
+                                        border: InputBorder.none,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // Phone Field
+                            Container(
+                              height: 58,
+                              decoration: BoxDecoration(
+                                color: AppColors.greyColor,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.phone,
+                                    color: Colors.white,
+                                    size: 24,
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: TextFormField(
+                                      controller: _phoneController,
+                                      keyboardType: TextInputType.phone,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                      ),
+                                      decoration: const InputDecoration(
+                                        hintText: 'Phone',
+                                        hintStyle: TextStyle(
+                                          color: Colors.white60,
+                                          fontSize: 16,
+                                        ),
+                                        border: InputBorder.none,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            const SizedBox(height: 20),
+
+                            // Reset Password Text Link
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: GestureDetector(
+                                onTap: () {
+                                  Navigator.pushNamed(
+                                    context,
+                                    AppRoutes.forgetPasswordRoute,
+                                  );
+                                },
+                                child: const Text(
+                                  'Reset Password',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            const Spacer(),
+                            const SizedBox(height: 32),
+
+                            // Delete Account Button (Red)
+                            SizedBox(
+                              height: 54,
+                              child: ElevatedButton(
+                                onPressed: isLoading
+                                    ? null
+                                    : () => _confirmDeleteAccount(
+                                        context,
+                                        context.read<ProfileCubit>(),
+                                      ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.redColor,
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Delete Account',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 14),
+
+                            // Update Data Button (Yellow)
+                            SizedBox(
+                              height: 54,
+                              child: ElevatedButton(
+                                onPressed: isLoading
+                                    ? null
+                                    : () {
+                                        context.read<ProfileCubit>().updateUser(
+                                          name: _nameController.text.trim(),
+                                          phone: _phoneController.text.trim(),
+                                          avatarId: selectedAvatarIndex + 1,
+                                        );
+                                      },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.yellowColor,
+                                  foregroundColor: Colors.black,
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                ),
+                                child: isLoading
+                                    ? const SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.5,
+                                          color: Colors.black,
+                                        ),
+                                      )
+                                    : const Text(
+                                        'Update Data',
+                                        style: TextStyle(
+                                          color: Colors.black,
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 16),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          );
+        },
       ),
     );
   }

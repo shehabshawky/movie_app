@@ -76,6 +76,14 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
+  Future<UserEntity?> loadCurrentUser() async {
+    try {
+      _currentUser = await getCurrentUserUseCase();
+      notifyListeners();
+    } catch (_) {}
+    return _currentUser;
+  }
+
   Future<bool> login(String email, String password) async {
     _isLoading = true;
     _errorMessage = null;
@@ -172,3 +180,4 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 }
+
