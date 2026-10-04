@@ -102,12 +102,15 @@ class OnboardingProvider extends ChangeNotifier {
           return l10n.onboardingTitle4;
         case 'onboardingTitle5':
           return l10n.onboardingTitle5;
+        case 'startWatchingNow':
+          return l10n.startWatchingNow;
       }
     }
     return page.title;
   }
 
   String getLocalizedDescription(OnboardingEntity page, AppLocalizations? l10n) {
+    if (page.description.isEmpty) return '';
     if (l10n != null && page.subtitleKey != null) {
       switch (page.subtitleKey) {
         case 'onboardingSubtitle1':

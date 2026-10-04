@@ -1,29 +1,47 @@
-import 'dart:developer';
 
-import 'package:flutter_bloc/flutter_bloc.dart';
 
-class MyBlocObserver extends BlocObserver {
-  @override
-  void onCreate(BlocBase bloc) {
-    super.onCreate(bloc);
-    log('onCreate -- ${bloc.runtimeType}');
+import 'package:dio/dio.dart';
+import 'package:movie_app/api/api_endpoints.dart';
+import 'package:movie_app/api/dio_helper.dart';
+
+class AuthService {
+  static Future<Response> register({
+    required String name,
+    required String email,
+    required String password,
+    required String confirmPassword,
+    required String phone,
+    required int avaterId,
+  }) async {
+    final url = ApiEndPoints.register;
+    return await DioHelper.postRegister(
+      url: url,
+      data: {
+        'name': name,
+        'email': email,
+        'password': password,
+        'confirmPassword': confirmPassword,
+        'phone': phone,
+        'avaterId': avaterId,
+      },
+    );
   }
 
-  @override
-  void onChange(BlocBase bloc, Change change) {
-    super.onChange(bloc, change);
-    log('onChange -- ${bloc.runtimeType}, $change');
+  static Future<Response> login({
+    required String email,
+    required String password,
+  }) async {
+    final url = ApiEndPoints.login;
+    return await DioHelper.postLogin(
+      url: url,
+      data: {'email': email, 'password': password},
+    );
   }
 
-  @override
-  void onError(BlocBase bloc, Object error, StackTrace stackTrace) {
-    log('onError -- ${bloc.runtimeType}, $error');
-    super.onError(bloc, error, stackTrace);
-  }
-
-  @override
-  void onClose(BlocBase bloc) {
-    super.onClose(bloc);
-    log('onClose -- ${bloc.runtimeType}');
+  static Future<Response> socialLogin({required String idToken}) {
+    return DioHelper.postData(
+      data: {"idToken": idToken},
+      url: ApiEndPoints.login,
+    );
   }
 }

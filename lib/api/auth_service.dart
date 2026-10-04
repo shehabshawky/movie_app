@@ -1,7 +1,8 @@
+
+
 import 'package:dio/dio.dart';
 import 'package:movie_app/api/api_endpoints.dart';
-
-import 'dio_helper.dart';
+import 'package:movie_app/api/dio_helper.dart';
 
 class AuthService {
   static Future<Response> register({

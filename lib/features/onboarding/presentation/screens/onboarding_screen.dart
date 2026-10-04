@@ -3,7 +3,6 @@ import 'package:movie_app/core/routes/app_routes.dart';
 import 'package:movie_app/core/theme/app_colors.dart';
 import 'package:movie_app/features/onboarding/presentation/controller/onboarding_provider.dart';
 import 'package:movie_app/features/onboarding/presentation/widgets/onboarding_page_view.dart';
-import 'package:movie_app/features/onboarding/presentation/widgets/page_indicator.dart';
 import 'package:movie_app/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
@@ -52,11 +51,14 @@ class _OnboardingPagesContent extends StatelessWidget {
     final currentPage = provider.pages[provider.currentPage];
     final bool isFirst = provider.isFirstPage;
     final bool isLast = provider.isLastPage;
+    final String description =
+        provider.getLocalizedDescription(currentPage, locale);
 
     return Scaffold(
       backgroundColor: AppColors.darkBackgroundColor,
       body: Stack(
         children: [
+          // Background PageView with posters
           Positioned.fill(
             child: OnboardingPageView(
               controller: provider.pageController,
@@ -64,6 +66,8 @@ class _OnboardingPagesContent extends StatelessWidget {
               onPageChanged: provider.onPageChanged,
             ),
           ),
+
+          // Bottom curved dark sheet matching design
           Positioned(
             left: 0,
             right: 0,
@@ -88,41 +92,42 @@ class _OnboardingPagesContent extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Title
                     Text(
                       provider.getLocalizedTitle(currentPage, locale),
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 22,
+                        fontSize: 24,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 0.2,
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: Text(
-                        provider.getLocalizedDescription(currentPage, locale),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: AppColors.lightTextColor,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w400,
-                          height: 1.45,
+
+                    // Subtitle (if available)
+                    if (description.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Text(
+                          description,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: AppColors.lightTextColor,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
+                            height: 1.45,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 20),
-                    PageIndicator(
-                      count: provider.pages.length,
-                      currentIndex: provider.currentPage,
-                      activeColor: AppColors.yellowColor,
-                      inactiveColor: AppColors.greyColor,
-                    ),
+                    ],
+
                     const SizedBox(height: 24),
+
+                    // Primary Button (Finish / Explore Now / Next)
                     SizedBox(
                       width: double.infinity,
-                      height: 50,
+                      height: 52,
                       child: ElevatedButton(
                         onPressed: () {
                           if (isLast) {
@@ -142,7 +147,9 @@ class _OnboardingPagesContent extends StatelessWidget {
                         child: Text(
                           isLast
                               ? (locale?.finish ?? 'Finish')
-                              : (locale?.next ?? 'Next'),
+                              : (isFirst
+                                  ? (locale?.exploreNow ?? 'Explore Now')
+                                  : (locale?.next ?? 'Next')),
                           style: const TextStyle(
                             color: Colors.black,
                             fontSize: 16,
@@ -151,14 +158,17 @@ class _OnboardingPagesContent extends StatelessWidget {
                         ),
                       ),
                     ),
+
+                    // Back Button (shown on ALL slides except the very first one)
                     if (!isFirst) ...[
                       const SizedBox(height: 12),
                       SizedBox(
                         width: double.infinity,
-                        height: 50,
+                        height: 52,
                         child: OutlinedButton(
                           onPressed: provider.previousPage,
                           style: OutlinedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
                             side: const BorderSide(
                               color: AppColors.yellowColor,
                               width: 1.5,

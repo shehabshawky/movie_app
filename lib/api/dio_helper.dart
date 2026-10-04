@@ -1,7 +1,8 @@
-import 'package:dio/dio.dart';
 
-import '../core/storage.dart';
-import 'api_const.dart';
+
+import 'package:dio/dio.dart';
+import 'package:movie_app/api/api_const.dart';
+import 'package:movie_app/core/storage.dart';
 
 class DioHelper {
   static Dio? dio;
@@ -74,20 +75,5 @@ class DioHelper {
     return await dio!.post(url, data: data);
   }
 
-  // static Future<Response> getIsFavorite({
-  //   required String url,
-  //   required String token,
-  // }) async {
-  //   return await dio!.get(
-  //     url,
-  //   );
-  // }
-  // static Future<Response> getAllFavorite({
-  //   required String url,
-  //   required String token,
-  // }) async {
-  //   return await dio!.get(
-  //     url,
-  //   );
-  // }
+  
 }
