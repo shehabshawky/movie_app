@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:movie_app/api/profile_service.dart';
 import 'package:movie_app/features/auth/data/datasources/auth_local_datasource.dart';
+import 'package:movie_app/features/auth/data/models/user_model.dart';
 import 'package:movie_app/model/profile_model.dart';
 
 part 'profile_state.dart';
@@ -27,34 +28,19 @@ class ProfileCubit extends Cubit<ProfileState> {
     String email = '';
     String id = '';
 
-    // 1. Check local cache from AuthLocalDataSource
-    try {
-      final cachedUser = await AuthLocalDataSourceImpl().getCachedUser();
-      if (cachedUser != null) {
-        if (cachedUser.id.isNotEmpty) id = cachedUser.id;
-        if (cachedUser.name.isNotEmpty) name = cachedUser.name;
-        if (cachedUser.email.isNotEmpty) email = cachedUser.email;
-        if (cachedUser.phoneNumber != null && cachedUser.phoneNumber!.isNotEmpty) {
-          phone = cachedUser.phoneNumber!;
-        }
-        if (cachedUser.avatar != null && cachedUser.avatar!.isNotEmpty) {
-          final match = RegExp(r'avatar(\d+)').firstMatch(cachedUser.avatar!);
-          if (match != null) {
-            avatarId = int.tryParse(match.group(1) ?? '1') ?? 1;
-          }
-        }
-      }
-    } catch (_) {}
-
-    // 2. Check Firebase Auth & Cloud Firestore
+    // 1. Check Firebase Auth & Cloud Firestore first (most up-to-date)
     final firebaseUser = FirebaseAuth.instance.currentUser;
     if (firebaseUser != null) {
-      if (id.isEmpty) id = firebaseUser.uid;
-      if (email.isEmpty && firebaseUser.email != null) email = firebaseUser.email!;
-      if (name.isEmpty && firebaseUser.displayName != null && firebaseUser.displayName!.isNotEmpty) {
-        name = firebaseUser.displayName!;
+      id = firebaseUser.uid;
+      if (firebaseUser.email != null) email = firebaseUser.email!;
+      if (firebaseUser.displayName != null &&
+          firebaseUser.displayName!.trim().isNotEmpty &&
+          firebaseUser.displayName!.trim().toLowerCase() != 'user') {
+        name = firebaseUser.displayName!.trim();
       }
-      if (phone.isEmpty && firebaseUser.phoneNumber != null) phone = firebaseUser.phoneNumber!;
+      if (firebaseUser.phoneNumber != null && firebaseUser.phoneNumber!.isNotEmpty) {
+        phone = firebaseUser.phoneNumber!;
+      }
 
       try {
         final doc = await FirebaseFirestore.instance
@@ -64,11 +50,13 @@ class ProfileCubit extends Cubit<ProfileState> {
 
         if (doc.exists && doc.data() != null) {
           final data = doc.data()!;
-          if (data['name'] != null && data['name'].toString().isNotEmpty) {
-            name = data['name'].toString();
+          final fsName = data['name']?.toString().trim();
+          if (fsName != null && fsName.isNotEmpty && fsName.toLowerCase() != 'user') {
+            name = fsName;
           }
-          if (data['phoneNumber'] != null && data['phoneNumber'].toString().isNotEmpty) {
-            phone = data['phoneNumber'].toString();
+          final fsPhone = data['phoneNumber']?.toString().trim();
+          if (fsPhone != null && fsPhone.isNotEmpty) {
+            phone = fsPhone;
           }
           if (data['avaterId'] != null) {
             avatarId = data['avaterId'] as int;
@@ -83,16 +71,40 @@ class ProfileCubit extends Cubit<ProfileState> {
       } catch (_) {}
     }
 
+    // 2. Check local cache from AuthLocalDataSource
+    try {
+      final cachedUser = await AuthLocalDataSourceImpl().getCachedUser();
+      if (cachedUser != null) {
+        if (id.isEmpty && cachedUser.id.isNotEmpty) id = cachedUser.id;
+        if (name.isEmpty &&
+            cachedUser.name.trim().isNotEmpty &&
+            cachedUser.name.trim().toLowerCase() != 'user') {
+          name = cachedUser.name.trim();
+        }
+        if (email.isEmpty && cachedUser.email.isNotEmpty) email = cachedUser.email;
+        if (phone.isEmpty && cachedUser.phoneNumber != null && cachedUser.phoneNumber!.isNotEmpty) {
+          phone = cachedUser.phoneNumber!;
+        }
+        if (avatarId == 1 && cachedUser.avatar != null && cachedUser.avatar!.isNotEmpty) {
+          final match = RegExp(r'avatar(\d+)').firstMatch(cachedUser.avatar!);
+          if (match != null) {
+            avatarId = int.tryParse(match.group(1) ?? '1') ?? 1;
+          }
+        }
+      }
+    } catch (_) {}
+
+    // Fallback name from email if needed
     if (name.isEmpty && email.isNotEmpty) {
       name = email.split('@').first;
     }
 
-    if (name.isNotEmpty) {
+    if (name.isNotEmpty || firebaseUser != null) {
       final profileData = ProfileModel(
         data: Data(
           id: id.isNotEmpty ? id : '1',
           email: email,
-          name: name,
+          name: name.isNotEmpty ? name : 'User',
           phone: phone,
           avaterId: avatarId,
         ),
@@ -135,6 +147,18 @@ class ProfileCubit extends Cubit<ProfileState> {
             .collection('users')
             .doc(firebaseUser.uid)
             .set(updateMap, SetOptions(merge: true));
+
+        try {
+          await AuthLocalDataSourceImpl().cacheUser(
+            UserModel(
+              id: firebaseUser.uid,
+              name: name ?? firebaseUser.displayName ?? '',
+              email: firebaseUser.email ?? '',
+              avatar: 'assets/avatar/avatar${avatarId ?? 1}.png',
+              phoneNumber: phone ?? firebaseUser.phoneNumber,
+            ),
+          );
+        } catch (_) {}
 
         final profileData = ProfileModel(
           data: Data(
