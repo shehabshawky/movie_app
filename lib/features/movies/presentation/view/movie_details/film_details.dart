@@ -22,7 +22,10 @@ class _FilmDetailsState extends State<FilmDetails> {
     final args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>? ??
         {};
-    final int id = args['id'] ?? args['movieId'];
+    final dynamic rawId = args['id'] ?? args['movieId'];
+    final int id = rawId is int
+        ? rawId
+        : (int.tryParse(rawId?.toString() ?? '0') ?? 0);
     return MultiBlocProvider(
       providers: [
         BlocProvider(create: (_) => MovieDetailsCubit()..fetchMovieDetails(id)),

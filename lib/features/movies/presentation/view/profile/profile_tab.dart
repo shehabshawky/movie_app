@@ -1,22 +1,36 @@
+import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:movie_app/core/routes/app_routes.dart';
 import 'package:movie_app/core/storage.dart';
 import 'package:movie_app/core/theme/app_colors.dart';
+import 'package:movie_app/features/auth/presentation/controller/auth_provider.dart';
 import 'package:movie_app/features/movies/presentation/view/profile/cubit/profile_cubit.dart';
 import 'package:movie_app/features/movies/presentation/view_model/add_favorite_cubit.dart';
 import 'package:movie_app/features/movies/presentation/widgets/movie_poster_card.dart';
 import 'package:movie_app/gen/assets.gen.dart';
 import 'package:movie_app/model/get_all_favorite_model.dart';
+import 'package:provider/provider.dart';
 
-class ProfileTab extends StatefulWidget {
+import 'package:movie_app/features/auth/domain/entities/user_entity.dart';
+
+class ProfileTab extends StatelessWidget {
   const ProfileTab({super.key});
 
   @override
-  State<ProfileTab> createState() => _ProfileTabState();
+  Widget build(BuildContext context) {
+    return const _ProfileTabView();
+  }
 }
 
-class _ProfileTabState extends State<ProfileTab> {
+class _ProfileTabView extends StatefulWidget {
+  const _ProfileTabView();
+
+  @override
+  State<_ProfileTabView> createState() => _ProfileTabViewState();
+}
+
+class _ProfileTabViewState extends State<_ProfileTabView> {
   final List<String> avatars = [
     Assets.avatar.avatar1.path,
     Assets.avatar.avatar2.path,
@@ -28,15 +42,6 @@ class _ProfileTabState extends State<ProfileTab> {
     Assets.avatar.avatar8.path,
     Assets.avatar.avatar9.path,
   ];
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ProfileCubit>().getUser();
-      context.read<AddFavoriteCubit>().getAllFavoriteData();
-    });
-  }
 
   void _onLogout() {
     showDialog(
@@ -66,6 +71,10 @@ class _ProfileTabState extends State<ProfileTab> {
             ),
             onPressed: () async {
               Navigator.pop(dialogContext);
+              try {
+                await context.read<AuthProvider>().logout();
+              } catch (_) {}
+              await FirebaseAuth.instance.signOut();
               await TokenManager.delete();
               if (mounted) {
                 Navigator.pushNamedAndRemoveUntil(
@@ -98,17 +107,55 @@ class _ProfileTabState extends State<ProfileTab> {
                   ? profileState.profile.data
                   : null;
 
-              final int rawAvatarId = user?.avaterId ?? 1;
-              final int avatarIndex = (rawAvatarId >= 1 && rawAvatarId <= avatars.length)
-                  ? rawAvatarId - 1
-                  : 0;
+              UserEntity? authUser;
+              try {
+                authUser = context.read<AuthProvider>().currentUser;
+              } catch (_) {}
+              final firebaseUser = FirebaseAuth.instance.currentUser;
+
+              String resolvedName = '';
+              if (user != null &&
+                  user.name != null &&
+                  user.name!.trim().isNotEmpty &&
+                  user.name!.trim().toLowerCase() != 'user') {
+                resolvedName = user.name!.trim();
+              } else if (authUser != null &&
+                  authUser.name.trim().isNotEmpty &&
+                  authUser.name.trim().toLowerCase() != 'user') {
+                resolvedName = authUser.name.trim();
+              } else if (firebaseUser?.displayName != null &&
+                  firebaseUser!.displayName!.trim().isNotEmpty &&
+                  firebaseUser.displayName!.trim().toLowerCase() != 'user') {
+                resolvedName = firebaseUser.displayName!.trim();
+              } else if (firebaseUser?.email != null &&
+                  firebaseUser!.email!.isNotEmpty) {
+                resolvedName = firebaseUser.email!.split('@').first;
+              } else {
+                resolvedName = 'User';
+              }
+
+              final String userName = resolvedName;
+
+              int rawAvatarId = user?.avaterId ?? 1;
+              if (rawAvatarId == 1 && authUser?.avatar != null) {
+                final match =
+                    RegExp(r'avatar(\d+)').firstMatch(authUser!.avatar!);
+                if (match != null) {
+                  rawAvatarId = int.tryParse(match.group(1) ?? '1') ?? 1;
+                }
+              }
+
+              final int avatarIndex =
+                  (rawAvatarId >= 1 && rawAvatarId <= avatars.length)
+                      ? rawAvatarId - 1
+                      : 0;
               final String avatarPath = avatars[avatarIndex];
-              final String userName = user?.name ?? 'User';
 
               return Column(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20.0, vertical: 16.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -147,9 +194,10 @@ class _ProfileTabState extends State<ProfileTab> {
                             // Middle: Wish List Count & Label
                             BlocBuilder<AddFavoriteCubit, AddFavoriteState>(
                               builder: (context, favState) {
-                                final int count = (favState is GetAllFavoriteSuccess)
-                                    ? favState.favoriteList.length
-                                    : 0;
+                                final int count =
+                                    (favState is GetAllFavoriteSuccess)
+                                        ? favState.favoriteList.length
+                                        : 0;
                                 return Column(
                                   children: [
                                     Text(
@@ -221,6 +269,11 @@ class _ProfileTabState extends State<ProfileTab> {
                                     );
                                     if (result == true && context.mounted) {
                                       context.read<ProfileCubit>().getUser();
+                                      try {
+                                        context
+                                            .read<AuthProvider>()
+                                            .loadCurrentUser();
+                                      } catch (_) {}
                                     }
                                   },
                                   style: ElevatedButton.styleFrom(
@@ -306,11 +359,13 @@ class _ProfileTabState extends State<ProfileTab> {
                     ),
                     tabs: [
                       Tab(
-                        icon: Icon(Icons.format_list_bulleted, color: AppColors.yellowColor, size: 28),
+                        icon: Icon(Icons.format_list_bulleted,
+                            color: AppColors.yellowColor, size: 28),
                         text: 'Watch List',
                       ),
                       Tab(
-                        icon: Icon(Icons.folder, color: AppColors.yellowColor, size: 28),
+                        icon: Icon(Icons.folder,
+                            color: AppColors.yellowColor, size: 28),
                         text: 'History',
                       ),
                     ],
@@ -328,9 +383,10 @@ class _ProfileTabState extends State<ProfileTab> {
                           );
                         }
 
-                        final List<Data> favoriteList = (favState is GetAllFavoriteSuccess)
-                            ? favState.favoriteList
-                            : <Data>[];
+                        final List<Data> favoriteList =
+                            (favState is GetAllFavoriteSuccess)
+                                ? favState.favoriteList
+                                : <Data>[];
 
                         return TabBarView(
                           children: [
@@ -389,4 +445,3 @@ class _ProfileTabState extends State<ProfileTab> {
     );
   }
 }
-
